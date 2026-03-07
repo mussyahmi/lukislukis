@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
-import { database, ref, set, get, initializeAuth, push, update, remove } from '@/lib/firebase';
+import { database, ref, set, get, initializeAuth, push, update } from '@/lib/firebase';
 import { GameLogic } from '@/lib/gameLogic';
 import { Room, Player } from '@/types/game';
 import { Plus, Shuffle, LogIn, HelpCircle } from 'lucide-react';
@@ -17,27 +17,6 @@ import { APP_VERSION } from '@/lib/version';
 import FeedbackButton from '@/components/common/FeedbackButton';
 import { Spinner } from '@/components/ui/spinner';
 
-const STALE_ROOM_THRESHOLD = 30 * 60 * 1000; // 30 minutes
-
-async function cleanupStaleRooms(allRooms: Record<string, Room>) {
-  const now = Date.now();
-  const deletePromises: Promise<void>[] = [];
-
-  Object.values(allRooms).forEach((room: Room) => {
-    const players = Object.values(room.players || {}) as Player[];
-
-    const isEmpty = players.length === 0 && now - room.createdAt > 60 * 60 * 1000;
-    const allInactive = players.length > 0 && players.every(p => now - p.lastActive > STALE_ROOM_THRESHOLD);
-
-    if (isEmpty || allInactive) {
-      deletePromises.push(remove(ref(database, `rooms/${room.roomCode}`)));
-    }
-  });
-
-  if (deletePromises.length > 0) {
-    await Promise.allSettled(deletePromises);
-  }
-}
 
 export default function HomePage() {
   const router = useRouter();
@@ -54,19 +33,6 @@ export default function HomePage() {
   const [createPasswordEnabled, setCreatePasswordEnabled] = useState(false);
   const [createPassword, setCreatePassword] = useState('');
 
-  useEffect(() => {
-    const runCleanup = async () => {
-      try {
-        const snapshot = await get(ref(database, 'rooms'));
-        if (snapshot.exists()) {
-          await cleanupStaleRooms(snapshot.val());
-        }
-      } catch {
-        // silently ignore cleanup errors
-      }
-    };
-    runCleanup();
-  }, []);
 
   const getPlayerId = async () => {
     try {
@@ -96,6 +62,7 @@ export default function HomePage() {
       const initialRoom: Room = {
         roomCode: newRoomCode,
         createdAt: Date.now(),
+        lastActivity: Date.now(),
         adminId: playerId,
         hasPassword: hasRoomPassword,
         ...(hasRoomPassword ? { password: createPassword.trim() } : {}),
@@ -272,9 +239,6 @@ export default function HomePage() {
       }
 
       const allRooms = snapshot.val();
-
-      // Fire-and-forget cleanup
-      cleanupStaleRooms(allRooms).catch(() => {});
 
       const availableRooms = Object.values(allRooms as Record<string, Room>).filter((room: Room) => {
         const playerCount = Object.keys(room.players || {}).length;

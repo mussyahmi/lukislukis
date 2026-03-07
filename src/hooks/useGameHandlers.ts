@@ -279,6 +279,7 @@ export function useGameHandlers(
       currentRound: 1,
       drawOrder: shuffledOrder,
       turnStartTime: Date.now(),
+      lastActivity: Date.now(),
     });
 
     toast.success('Permainan bermula!');
@@ -294,6 +295,7 @@ export function useGameHandlers(
       [`rooms/${roomCode}/revealedLetters`]: [],
       [`rooms/${roomCode}/usedWords`]: [...(room.usedWords || []), word],
       [`rooms/${roomCode}/canvas`]: { strokes: {}, cleared: true },
+      [`rooms/${roomCode}/lastActivity`]: Date.now(),
     };
 
     Object.keys(room.players).forEach(pid => {
@@ -437,6 +439,7 @@ export function useGameHandlers(
       isNearMatch: false,
       timestamp: Date.now(),
     });
+    await update(ref(database, `rooms/${roomCode}`), { lastActivity: Date.now() });
   }, [room, playerId, roomCode]);
 
   const handleTurnComplete = useCallback(async () => {

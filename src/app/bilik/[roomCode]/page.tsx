@@ -298,18 +298,18 @@ export default function RoomPage() {
     }
   }, [room?.gameState]);
 
-  // Show name prompt if needed
-  if (needsName) {
-    return <NamePrompt onSubmit={handleJoinRoom} roomCode={roomCode} />;
-  }
-
-  // Loading state
+  // Loading state (must check before needsName to ensure playerId is set)
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-lg font-semibold text-muted-foreground">Memuatkan...</div>
       </div>
     );
+  }
+
+  // Show name prompt if needed
+  if (needsName) {
+    return <NamePrompt onSubmit={handleJoinRoom} roomCode={roomCode} />;
   }
 
   // Room not found

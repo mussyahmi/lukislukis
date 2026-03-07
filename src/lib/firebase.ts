@@ -17,6 +17,7 @@ const database = getDatabase(app);
 const auth = getAuth(app);
 
 let isInitialized = false;
+let initPromise: Promise<string> | null = null;
 
 // Initialize anonymous auth
 export async function initializeAuth(): Promise<string> {
@@ -24,7 +25,12 @@ export async function initializeAuth(): Promise<string> {
     return auth.currentUser.uid;
   }
 
-  return new Promise((resolve, reject) => {
+  // Return existing in-flight promise to prevent concurrent sign-in attempts
+  if (initPromise) {
+    return initPromise;
+  }
+
+  initPromise = new Promise((resolve, reject) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         isInitialized = true;
@@ -37,12 +43,15 @@ export async function initializeAuth(): Promise<string> {
           unsubscribe();
           resolve(userCredential.user.uid);
         } catch (error) {
+          initPromise = null;
           unsubscribe();
           reject(error);
         }
       }
     });
   });
+
+  return initPromise;
 }
 
 export { database, auth, ref, onValue, set, update, push, remove, get };

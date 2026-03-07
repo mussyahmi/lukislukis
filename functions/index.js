@@ -7,11 +7,58 @@ admin.initializeApp();
  * Scheduled function to clean up anonymous users older than 24 hours
  * Runs daily at midnight (Kuala Lumpur time)
  */
+const STALE_PLAYER_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+const INACTIVE_ROOM_THRESHOLD = 60 * 60 * 1000; // 1 hour
+
+exports.cleanupStaleRooms = functions.scheduler.onSchedule({
+  schedule: 'every 6 hours',
+  timeZone: 'Asia/Kuala_Lumpur',
+  memory: '128MiB',
+  timeoutSeconds: 60,
+}, async () => {
+  const db = admin.database();
+  const now = Date.now();
+
+  console.log('🧹 Starting stale room cleanup...');
+
+  try {
+    const snapshot = await db.ref('rooms').get();
+
+    if (!snapshot.exists()) {
+      console.log('No rooms found.');
+      return;
+    }
+
+    const rooms = snapshot.val();
+    const deletePromises = [];
+
+    Object.values(rooms).forEach((room) => {
+      const players = room.players ? Object.values(room.players) : [];
+
+      const isEmpty = players.length === 0 && now - room.createdAt > INACTIVE_ROOM_THRESHOLD;
+      const allInactive = players.length > 0 && players.every(p => now - p.lastActive > STALE_PLAYER_THRESHOLD);
+      const roomInactive = room.lastActivity && now - room.lastActivity > INACTIVE_ROOM_THRESHOLD;
+
+      if (isEmpty || allInactive || roomInactive) {
+        console.log(`🗑️  Deleting room: ${room.roomCode} (reason: ${isEmpty ? 'empty' : allInactive ? 'all players inactive' : 'room inactive'})`);
+        deletePromises.push(db.ref(`rooms/${room.roomCode}`).remove());
+      }
+    });
+
+    await Promise.all(deletePromises);
+    console.log(`✅ Room cleanup complete. Deleted: ${deletePromises.length} room(s).`);
+
+  } catch (error) {
+    console.error('❌ Room cleanup failed:', error);
+    throw error;
+  }
+});
+
 exports.cleanupOldAnonymousUsers = functions.scheduler.onSchedule({
   schedule: 'every 24 hours',
   timeZone: 'Asia/Kuala_Lumpur',
-  memory: '256MiB',
-  timeoutSeconds: 300,
+  memory: '128MiB',
+  timeoutSeconds: 60,
 }, async (event) => {
   const auth = admin.auth();
   const now = Date.now();

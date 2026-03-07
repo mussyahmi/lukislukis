@@ -41,4 +41,5 @@ export interface Room {
   };
   messages?: Record<string, any>;
   kickedPlayers?: Record<string, boolean>;
+  lastActivity: number;
 }
