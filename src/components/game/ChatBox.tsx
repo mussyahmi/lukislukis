@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, UserMinus, UserPlus, SkipForward, AlertTriangle, Timer, PartyPopper, Gamepad2, Ban, ShieldCheck, UserX } from 'lucide-react';
+import { Send, UserMinus, UserPlus, SkipForward, AlertTriangle, Timer, PartyPopper, Gamepad2, Ban, ShieldCheck, UserX, Pencil } from 'lucide-react';
 import { playSound } from '@/lib/sounds';
 
 export interface Message {
@@ -81,6 +81,7 @@ export function ChatBox({ messages, isDrawer, hasGuessed, onSendMessage, playerI
       case 'user-x': return <UserX {...iconProps} />;
       case 'shield-check': return <ShieldCheck {...iconProps} />;
       case 'ban': return <Ban {...iconProps} />;
+      case 'pencil': return <Pencil {...iconProps} />;
       default: return null;
     }
   };
@@ -143,7 +144,7 @@ export function ChatBox({ messages, isDrawer, hasGuessed, onSendMessage, playerI
     );
   };
 
-  if (compact) {
+if (compact) {
     return (
       <div className="h-full flex flex-col bg-card">
         <div

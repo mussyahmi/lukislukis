@@ -20,6 +20,8 @@ export function PlayerList({
   onVoteToKick
 }: PlayerListProps) {
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  const isAdmin = currentPlayerId === adminId;
+  const isSmallRoom = players.length <= 3;
 
   const getVoteCount = (targetPlayerId: string) => {
     return players.filter(p => p.votedToKick?.[targetPlayerId] === true).length;
@@ -33,10 +35,6 @@ export function PlayerList({
   const hasVoted = (targetPlayerId: string) => {
     const currentPlayer = players.find(p => p.playerId === currentPlayerId);
     return currentPlayer?.votedToKick?.[targetPlayerId] === true;
-  };
-
-  const canVote = (targetPlayer: Player) => {
-    return targetPlayer.playerId !== currentPlayerId;
   };
 
   const getRankStyle = (index: number) => {
@@ -55,11 +53,11 @@ export function PlayerList({
         {sortedPlayers.map((player, index) => {
           const isDrawing = player.playerId === currentDrawerId;
           const isYou = player.playerId === currentPlayerId;
-          const isAdmin = player.playerId === adminId;
+          const isPlayerAdmin = player.playerId === adminId;
           const voteCount = getVoteCount(player.playerId);
           const totalVoters = getTotalVoters(player.playerId);
           const hasVotedForThisPlayer = hasVoted(player.playerId);
-          const showVoteButton = canVote(player);
+          const showKickButton = !isYou && (isSmallRoom ? isAdmin : true);
 
           return (
             <div
@@ -83,14 +81,14 @@ export function PlayerList({
                       {player.name}
                       {isYou && <span className="text-xs text-muted-foreground"> (Anda)</span>}
                     </span>
-                    {isAdmin && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+                    {isPlayerAdmin && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
                     {isDrawing && <Pencil className="w-3 h-3 text-primary flex-shrink-0" />}
                   </div>
                   <div className="text-xs text-muted-foreground">{player.score} mata</div>
                 </div>
 
-                {/* Vote Button */}
-                {showVoteButton && onVoteToKick && (
+                {/* Kick / Vote Button */}
+                {showKickButton && onVoteToKick && (
                   <Button
                     variant={hasVotedForThisPlayer ? 'destructive' : 'ghost'}
                     size="sm"
@@ -102,8 +100,8 @@ export function PlayerList({
                 )}
               </div>
 
-              {/* Vote count */}
-              {voteCount > 0 && (
+              {/* Vote count (only in rooms >3 players) */}
+              {!isSmallRoom && voteCount > 0 && (
                 <div className="text-xs font-medium text-destructive mt-1 text-center">
                   {totalVoters - voteCount} lagi undi untuk ditendang
                 </div>

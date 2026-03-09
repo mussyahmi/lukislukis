@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Copy, Users, LogOut, Settings, Volume2, VolumeX } from 'lucide-react';
+import { Copy, Users, LogOut, Settings, Volume2, VolumeX, Sun, Moon, Bell, BellOff } from 'lucide-react';
 import { Player } from '@/types/game';
 import { ChatBox } from '@/components/game/ChatBox';
 import { PlayerList } from '@/components/game/PlayerList';
-import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { toggleMute, isMuted } from '@/lib/sounds';
+import { useTheme } from 'next-themes';
 import Image from 'next/image';
 
 interface Message {
@@ -68,12 +68,17 @@ export function GameLayout({
   const [mobileTab, setMobileTab] = useState<'canvas' | 'chat' | 'players'>('canvas');
   const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(0);
   const [soundMuted, setSoundMuted] = useState(() => isMuted());
+  const { resolvedTheme, setTheme } = useTheme();
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  );
   const [passwordInput, setPasswordInput] = useState(roomPassword || '');
   const [passwordEnabled, setPasswordEnabled] = useState(hasPassword);
   const [capacityInput, setCapacityInput] = useState(maxPlayers);
 
   const isAdmin = playerId === adminId;
   const minCapacity = Math.max(3, players.length);
+
 
   useEffect(() => {
     const stored = localStorage.getItem(`lastRead_${roomCode}`);
@@ -115,61 +120,117 @@ export function GameLayout({
     onLeaveRoom();
   };
 
+  const handleRequestNotification = async () => {
+    const result = await Notification.requestPermission();
+    setNotifPermission(result);
+  };
+
   const handleSaveSettings = () => {
     onUpdatePassword(passwordEnabled ? (passwordInput.trim() || null) : null);
     onUpdateCapacity(capacityInput);
   };
 
   const settingsPopoverContent = (
-    <div className="space-y-4 text-sm w-64">
-      {/* Capacity */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-semibold">Kapasiti Pemain</label>
-          <span className="text-sm font-bold text-primary tabular-nums">{capacityInput} pemain</span>
-        </div>
-        <Slider
-          min={minCapacity}
-          max={20}
-          step={1}
-          value={[capacityInput]}
-          onValueChange={(vals) => setCapacityInput(vals[0])}
-        />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{minCapacity}</span>
-          <span>20</span>
-        </div>
+    <div className="space-y-3 text-sm">
+      {/* Theme */}
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-semibold">Tema</label>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground"
+          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+        >
+          {resolvedTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </Button>
       </div>
 
-      {/* Password */}
-      <div className="space-y-2">
-        <label className="text-sm font-semibold">Kata Laluan</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="settings-password-toggle"
-            checked={passwordEnabled}
-            onChange={e => setPasswordEnabled(e.target.checked)}
-            className="w-4 h-4 accent-primary"
-          />
-          <label htmlFor="settings-password-toggle" className="text-sm text-muted-foreground cursor-pointer">
-            Aktifkan kata laluan
-          </label>
-        </div>
-        {passwordEnabled && (
-          <Input
-            value={passwordInput}
-            onChange={e => setPasswordInput(e.target.value)}
-            placeholder="Kata laluan bilik"
-            type="password"
-            className="h-9"
-          />
+      {/* Sound */}
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-semibold">Bunyi</label>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground"
+          onClick={() => setSoundMuted(toggleMute())}
+        >
+          {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </Button>
+      </div>
+
+      {/* Notifications */}
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-semibold">Notifikasi</label>
+        {notifPermission === 'default' && (
+          <Button size="sm" variant="outline" className="h-8 text-xs px-2" onClick={handleRequestNotification}>
+            Aktifkan
+          </Button>
+        )}
+        {notifPermission === 'granted' && (
+          <div className="h-8 w-8 flex items-center justify-center">
+            <Bell className="w-4 h-4 text-emerald-500" />
+          </div>
+        )}
+        {notifPermission === 'denied' && (
+          <div className="h-8 w-8 flex items-center justify-center">
+            <BellOff className="w-4 h-4 text-muted-foreground" />
+          </div>
         )}
       </div>
 
-      <Button size="sm" className="w-full h-9 font-semibold" onClick={handleSaveSettings}>
-        Simpan Tetapan
-      </Button>
+      {/* Admin-only room settings */}
+      {isAdmin && (
+        <div className="border-t pt-3 space-y-3">
+          {/* Capacity */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold">Kapasiti Pemain</label>
+              <span className="text-sm font-bold text-primary tabular-nums">{capacityInput} pemain</span>
+            </div>
+            <Slider
+              min={minCapacity}
+              max={20}
+              step={1}
+              value={[capacityInput]}
+              onValueChange={(vals) => setCapacityInput(vals[0])}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{minCapacity}</span>
+              <span>20</span>
+            </div>
+          </div>
+
+          {/* Password */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Kata Laluan</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="settings-password-toggle"
+                checked={passwordEnabled}
+                onChange={e => setPasswordEnabled(e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+              <label htmlFor="settings-password-toggle" className="text-sm text-muted-foreground cursor-pointer">
+                Aktifkan kata laluan
+              </label>
+            </div>
+            {passwordEnabled && (
+              <Input
+                value={passwordInput}
+                onChange={e => setPasswordInput(e.target.value)}
+                placeholder="Kata laluan bilik"
+                type="password"
+                className="h-9"
+              />
+            )}
+          </div>
+
+          <Button size="sm" className="w-full h-9 font-semibold" onClick={handleSaveSettings}>
+            Simpan Tetapan
+          </Button>
+        </div>
+      )}
     </div>
   );
 
@@ -185,7 +246,7 @@ export function GameLayout({
             </div>
             <span className="font-black text-sm tracking-tight">LukisLukis</span>
           </div>
-          {/* Right controls: room code, theme toggle, settings, exit */}
+          {/* Right controls: room code, settings, exit */}
           <div className="flex items-center gap-1.5">
             <button
               onClick={onCopyCode}
@@ -194,27 +255,16 @@ export function GameLayout({
               <code className="text-sm font-mono font-bold tracking-widest">{roomCode}</code>
               <Copy className="w-3 h-3 text-muted-foreground" />
             </button>
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-muted-foreground"
-              onClick={() => setSoundMuted(toggleMute())}
-            >
-              {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </Button>
-            {isAdmin && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent side="bottom" align="end" className="p-4">
-                  {settingsPopoverContent}
-                </PopoverContent>
-              </Popover>
-            )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="p-4">
+                {settingsPopoverContent}
+              </PopoverContent>
+            </Popover>
             <Button variant="ghost" size="sm" onClick={handleLeaveRoom} className="h-8 w-8 p-0 text-muted-foreground">
               <LogOut className="w-4 h-4" />
             </Button>
@@ -238,15 +288,6 @@ export function GameLayout({
               {roomCode}
               <Copy className="w-3.5 h-3.5 text-muted-foreground" />
             </Button>
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-muted-foreground"
-              onClick={() => setSoundMuted(toggleMute())}
-            >
-              {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </Button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3">
@@ -260,19 +301,17 @@ export function GameLayout({
           </div>
 
           <div className="p-3 border-t space-y-2">
-            {isAdmin && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full gap-2">
-                    <Settings className="w-3.5 h-3.5" />
-                    Tetapan
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="p-4">
-                  {settingsPopoverContent}
-                </PopoverContent>
-              </Popover>
-            )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full gap-2">
+                  <Settings className="w-3.5 h-3.5" />
+                  Tetapan
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="p-4">
+                {settingsPopoverContent}
+              </PopoverContent>
+            </Popover>
             <Button variant="destructive" size="sm" onClick={handleLeaveRoom} className="w-full gap-2">
               <LogOut className="w-3.5 h-3.5" />
               Keluar
@@ -293,6 +332,7 @@ export function GameLayout({
             hasGuessed={hasGuessed}
             onSendMessage={onSendMessage}
             playerId={playerId}
+
           />
         </div>
 
@@ -306,6 +346,7 @@ export function GameLayout({
               onSendMessage={onSendMessage}
               playerId={playerId}
               compact={true}
+  
             />
           </div>
         )}

@@ -300,6 +300,21 @@ export function useGameHandlers(
 
     await update(ref(database), updates);
     playSound('drawingStart');
+
+    const drawerName = room.players[playerId]?.name;
+    if (drawerName) {
+      const systemMessageRef = push(ref(database, `rooms/${roomCode}/messages`));
+      await set(systemMessageRef, {
+        id: systemMessageRef.key,
+        playerId: 'system',
+        playerName: 'Sistem',
+        text: `${drawerName} sedang melukis`,
+        isCorrect: false,
+        isNearMatch: false,
+        timestamp: Date.now(),
+        icon: 'pencil',
+      });
+    }
   }, [room, playerId, roomCode]);
 
   const handleStrokeComplete = useCallback(async (stroke: Stroke) => {
@@ -509,186 +524,143 @@ export function useGameHandlers(
 
   const handleVoteToKick = useCallback(async (targetPlayerId: string) => {
     if (!room || !playerId) return;
-
-    // Prevent voting for yourself
-    if (targetPlayerId === playerId) {
-      toast.error('Anda tidak boleh mengundi diri sendiri!');
-      return;
-    }
+    if (targetPlayerId === playerId) return;
 
     try {
       const currentPlayer = room.players[playerId];
       const targetPlayer = room.players[targetPlayerId];
-
       if (!currentPlayer || !targetPlayer) return;
 
-      // Check if player has already voted
-      const hasAlreadyVoted = currentPlayer.votedToKick?.[targetPlayerId] === true;
+      const playerCount = Object.keys(room.players).length;
+      const isAdmin = playerId === room.adminId;
 
-      if (hasAlreadyVoted) {
-        // Cancel vote (undo)
-        await update(ref(database, `rooms/${roomCode}/players/${playerId}/votedToKick`), {
-          [targetPlayerId]: null,
-        });
+      // With 3 players, only admin can kick directly
+      if (playerCount <= 3) {
+        if (!isAdmin) return;
 
-        // Send chat message about vote cancellation
-        const cancelMsgRef = push(ref(database, `rooms/${roomCode}/messages`));
-        await set(cancelMsgRef, {
-          id: cancelMsgRef.key,
-          playerId: 'system',
-          playerName: 'Sistem',
-          text: `${currentPlayer.name} membatalkan undi untuk tendang ${targetPlayer.name}`,
-          isCorrect: false,
-          isNearMatch: false,
-          timestamp: Date.now(),
-          icon: 'shield-check', // Icon for cancellation
-        });
+        const roomSnapshot = await get(ref(database, `rooms/${roomCode}`));
+        if (!roomSnapshot.exists()) return;
+        const currentRoom = roomSnapshot.val();
+        const allPlayers = Object.values(currentRoom.players) as Player[];
+        const newDrawOrder = currentRoom.drawOrder.filter((id: string) => id !== targetPlayerId);
+        const wasDrawer = targetPlayerId === currentRoom.currentDrawerId;
 
-        toast.info(`Undi dibatalkan untuk ${targetPlayer.name}`);
-      } else {
-        // Cast vote
-        await update(ref(database, `rooms/${roomCode}/players/${playerId}/votedToKick`), {
-          [targetPlayerId]: true,
-        });
-
-        // Send chat message about the vote
-        const voteMsgRef = push(ref(database, `rooms/${roomCode}/messages`));
-        await set(voteMsgRef, {
-          id: voteMsgRef.key,
-          playerId: 'system',
-          playerName: 'Sistem',
-          text: `${currentPlayer.name} mengundi untuk tendang ${targetPlayer.name}`,
-          isCorrect: false,
-          isNearMatch: false,
-          timestamp: Date.now(),
-          icon: 'user-x', // Icon for vote to kick
-        });
-
-        toast.success(`Anda mengundi untuk tendang ${targetPlayer.name}`);
-      }
-
-      // Check if vote threshold is met
-      await new Promise(resolve => setTimeout(resolve, 300)); // Small delay to ensure Firebase updates
-
-      const roomSnapshot = await get(ref(database, `rooms/${roomCode}`));
-      if (!roomSnapshot.exists()) return;
-
-      const updatedRoom = roomSnapshot.val();
-      const allPlayers = Object.values(updatedRoom.players) as Player[];
-
-      // Count votes for target player
-      const voteCount = allPlayers.filter(p => p.votedToKick?.[targetPlayerId] === true).length;
-
-      // Calculate threshold (50% of players excluding target)
-      const totalVoters = allPlayers.filter(p => p.playerId !== targetPlayerId).length;
-      const threshold = Math.ceil(totalVoters / 2);
-
-      // Kick player if threshold met
-      if (voteCount >= threshold) {
-        const kickedPlayerName = targetPlayer.name;
-        const wasDrawer = targetPlayerId === updatedRoom.currentDrawerId;
-        const wasAdmin = targetPlayerId === updatedRoom.adminId;
-
-        // Get list of voters for the final kick message
-        const voters = allPlayers
-          .filter(p => p.votedToKick?.[targetPlayerId] === true)
-          .map(p => p.name)
-          .join(', ');
-
-        // Remove player
         await remove(ref(database, `rooms/${roomCode}/players/${targetPlayerId}`));
-
-        // Update draw order
-        const newDrawOrder = updatedRoom.drawOrder.filter((id: string) => id !== targetPlayerId);
 
         const updates: any = {
           drawOrder: newDrawOrder,
           [`kickedPlayers/${targetPlayerId}`]: true,
         };
 
-        // Clear all votes for this player from other players
-        allPlayers.forEach(p => {
-          if (p.votedToKick?.[targetPlayerId]) {
-            updates[`players/${p.playerId}/votedToKick/${targetPlayerId}`] = null;
-          }
-        });
-
-        // Reassign admin if kicked player was admin
-        if (wasAdmin) {
-          const remainingPlayers = allPlayers.filter(p => p.playerId !== targetPlayerId);
-          if (remainingPlayers.length > 0) {
-            updates.adminId = remainingPlayers[0].playerId;
+        if (wasDrawer && (currentRoom.gameState === 'WORD_SELECTION' || currentRoom.gameState === 'DRAWING')) {
+          const currentIndex = currentRoom.currentDrawerIndex;
+          if (currentIndex >= newDrawOrder.length - 1) {
+            updates.gameState = currentRoom.currentRound < currentRoom.totalRounds ? 'ROUND_END' : 'GAME_ENDED';
+            updates.turnStartTime = Date.now();
+          } else {
+            updates.currentDrawerId = newDrawOrder[currentIndex];
+            updates.currentDrawerIndex = currentIndex;
+            updates.gameState = 'WORD_SELECTION';
+            updates.turnStartTime = Date.now();
           }
         }
 
-        // Handle if kicked player was the current drawer
-        if (wasDrawer) {
-          if (updatedRoom.gameState === 'WORD_SELECTION' || updatedRoom.gameState === 'DRAWING') {
-            const currentIndex = updatedRoom.currentDrawerIndex;
-
-            if (currentIndex >= newDrawOrder.length - 1) {
-              // Last turn of the round
-              if (updatedRoom.currentRound < updatedRoom.totalRounds) {
-                updates.gameState = 'ROUND_END';
-                updates.turnStartTime = Date.now();
-              } else {
-                updates.gameState = 'GAME_ENDED';
-              }
-            } else {
-              // Move to next drawer
-              const nextDrawerId = newDrawOrder[currentIndex < newDrawOrder.length ? currentIndex : 0];
-              updates.currentDrawerId = nextDrawerId;
-              updates.currentDrawerIndex = currentIndex;
-              updates.gameState = 'WORD_SELECTION';
-              updates.turnStartTime = Date.now();
-            }
-          }
-        }
-
-        // Check if remaining players < 3
-        const remainingPlayerCount = allPlayers.filter(p => p.playerId !== targetPlayerId).length;
-        if (remainingPlayerCount < 3 && updatedRoom.gameState !== 'WAITING') {
+        const remainingCount = allPlayers.filter(p => p.playerId !== targetPlayerId).length;
+        const msgRef = push(ref(database, `rooms/${roomCode}/messages`));
+        if (remainingCount < 3 && currentRoom.gameState !== 'WAITING') {
           updates.gameState = 'GAME_ENDED';
-
-          const msgRef = push(ref(database, `rooms/${roomCode}/messages`));
-          await set(msgRef, {
-            id: msgRef.key,
-            playerId: 'system',
-            playerName: 'Sistem',
-            text: `${kickedPlayerName} telah ditendang. Pemain tidak mencukupi - permainan tamat`,
-            isCorrect: false,
-            isNearMatch: false,
-            timestamp: Date.now(),
-            icon: 'alert-triangle',
-          });
+          await set(msgRef, { id: msgRef.key, playerId: 'system', playerName: 'Sistem', text: `${targetPlayer.name} telah ditendang. Pemain tidak mencukupi - permainan tamat`, isCorrect: false, isNearMatch: false, timestamp: Date.now(), icon: 'alert-triangle' });
         } else {
-          // Send kick message with voter names
-          let kickMessage = `${kickedPlayerName} telah ditendang! (${voteCount}/${threshold} undi)\nDiundi oleh: ${voters}`;
-
-          if (wasDrawer && wasAdmin) {
-            kickMessage += '\n[Pelukis & Admin ditendang - giliran dilompat]';
-          } else if (wasDrawer) {
-            kickMessage += '\n[Pelukis ditendang - giliran dilompat]';
-          } else if (wasAdmin) {
-            kickMessage += '\n[Admin ditendang - admin baru dilantik]';
-          }
-
-          const msgRef = push(ref(database, `rooms/${roomCode}/messages`));
-          await set(msgRef, {
-            id: msgRef.key,
-            playerId: 'system',
-            playerName: 'Sistem',
-            text: kickMessage,
-            isCorrect: false,
-            isNearMatch: false,
-            timestamp: Date.now(),
-            icon: 'ban', // Icon for successful kick
-          });
+          await set(msgRef, { id: msgRef.key, playerId: 'system', playerName: 'Sistem', text: `${targetPlayer.name} telah ditendang oleh admin`, isCorrect: false, isNearMatch: false, timestamp: Date.now(), icon: 'ban' });
         }
 
         await update(ref(database, `rooms/${roomCode}`), updates);
+        toast.success(`${targetPlayer.name} telah ditendang!`);
+        return;
+      }
 
-        toast.success(`${kickedPlayerName} telah ditendang!`);
+      // With >3 players, use vote system
+      const hasAlreadyVoted = currentPlayer.votedToKick?.[targetPlayerId] === true;
+
+      if (hasAlreadyVoted) {
+        await update(ref(database, `rooms/${roomCode}/players/${playerId}/votedToKick`), { [targetPlayerId]: null });
+        const cancelMsgRef = push(ref(database, `rooms/${roomCode}/messages`));
+        await set(cancelMsgRef, { id: cancelMsgRef.key, playerId: 'system', playerName: 'Sistem', text: `${currentPlayer.name} membatalkan undi untuk tendang ${targetPlayer.name}`, isCorrect: false, isNearMatch: false, timestamp: Date.now(), icon: 'shield-check' });
+        toast.info(`Undi dibatalkan untuk ${targetPlayer.name}`);
+      } else {
+        await update(ref(database, `rooms/${roomCode}/players/${playerId}/votedToKick`), { [targetPlayerId]: true });
+        const voteMsgRef = push(ref(database, `rooms/${roomCode}/messages`));
+        await set(voteMsgRef, { id: voteMsgRef.key, playerId: 'system', playerName: 'Sistem', text: `${currentPlayer.name} mengundi untuk tendang ${targetPlayer.name}`, isCorrect: false, isNearMatch: false, timestamp: Date.now(), icon: 'user-x' });
+        toast.success(`Anda mengundi untuk tendang ${targetPlayer.name}`);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const roomSnapshot = await get(ref(database, `rooms/${roomCode}`));
+      if (!roomSnapshot.exists()) return;
+
+      const updatedRoom = roomSnapshot.val();
+      const allPlayers = Object.values(updatedRoom.players) as Player[];
+      const voteCount = allPlayers.filter(p => p.votedToKick?.[targetPlayerId] === true).length;
+      const totalVoters = allPlayers.filter(p => p.playerId !== targetPlayerId).length;
+      const threshold = Math.ceil(totalVoters / 2);
+
+      if (voteCount >= threshold) {
+        const wasDrawer = targetPlayerId === updatedRoom.currentDrawerId;
+        const wasAdmin = targetPlayerId === updatedRoom.adminId;
+        const newDrawOrder = updatedRoom.drawOrder.filter((id: string) => id !== targetPlayerId);
+
+        await remove(ref(database, `rooms/${roomCode}/players/${targetPlayerId}`));
+
+        const updates: any = {
+          drawOrder: newDrawOrder,
+          [`kickedPlayers/${targetPlayerId}`]: true,
+        };
+
+        allPlayers.forEach(p => {
+          if (p.votedToKick?.[targetPlayerId]) updates[`players/${p.playerId}/votedToKick/${targetPlayerId}`] = null;
+        });
+
+        if (wasAdmin) {
+          const remaining = allPlayers.filter(p => p.playerId !== targetPlayerId);
+          if (remaining.length > 0) updates.adminId = remaining[0].playerId;
+        }
+
+        if (wasDrawer && (updatedRoom.gameState === 'WORD_SELECTION' || updatedRoom.gameState === 'DRAWING')) {
+          const currentIndex = updatedRoom.currentDrawerIndex;
+          if (currentIndex >= newDrawOrder.length - 1) {
+            updates.gameState = updatedRoom.currentRound < updatedRoom.totalRounds ? 'ROUND_END' : 'GAME_ENDED';
+            updates.turnStartTime = Date.now();
+          } else {
+            updates.currentDrawerId = newDrawOrder[currentIndex];
+            updates.currentDrawerIndex = currentIndex;
+            updates.gameState = 'WORD_SELECTION';
+            updates.turnStartTime = Date.now();
+          }
+        }
+
+        const remainingCount = allPlayers.filter(p => p.playerId !== targetPlayerId).length;
+        const msgRef = push(ref(database, `rooms/${roomCode}/messages`));
+        if (remainingCount < 3 && updatedRoom.gameState !== 'WAITING') {
+          updates.gameState = 'GAME_ENDED';
+          await set(msgRef, { id: msgRef.key, playerId: 'system', playerName: 'Sistem', text: `${targetPlayer.name} telah ditendang. Pemain tidak mencukupi - permainan tamat`, isCorrect: false, isNearMatch: false, timestamp: Date.now(), icon: 'alert-triangle' });
+        } else {
+          const voters = allPlayers
+            .filter(p => p.votedToKick?.[targetPlayerId] === true)
+            .map(p => p.name)
+            .join(', ');
+          let kickMsg = `${targetPlayer.name} telah ditendang! (${voteCount}/${threshold} undi)\nDiundi oleh: ${voters}`;
+          if (wasDrawer && wasAdmin) {
+            kickMsg += '\n[Pelukis & Admin ditendang - giliran dilompat]';
+          } else if (wasDrawer) {
+            kickMsg += '\n[Pelukis ditendang - giliran dilompat]';
+          } else if (wasAdmin) {
+            kickMsg += '\n[Admin ditendang - admin baru dilantik]';
+          }
+          await set(msgRef, { id: msgRef.key, playerId: 'system', playerName: 'Sistem', text: kickMsg, isCorrect: false, isNearMatch: false, timestamp: Date.now(), icon: 'ban' });
+        }
+
+        await update(ref(database, `rooms/${roomCode}`), updates);
+        toast.success(`${targetPlayer.name} telah ditendang!`);
       }
     } catch (error) {
       console.error('Error voting to kick:', error);
