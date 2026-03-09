@@ -648,7 +648,7 @@ export function useGameHandlers(
             .filter(p => p.votedToKick?.[targetPlayerId] === true)
             .map(p => p.name)
             .join(', ');
-          let kickMsg = `${targetPlayer.name} telah ditendang! (${voteCount}/${threshold} undi)\nDiundi oleh: ${voters}`;
+          let kickMsg = `${targetPlayer.name} telah ditendang dengan ${voteCount} undian!)\nDiundi oleh: ${voters}`;
           if (wasDrawer && wasAdmin) {
             kickMsg += '\n[Pelukis & Admin ditendang - giliran dilompat]';
           } else if (wasDrawer) {

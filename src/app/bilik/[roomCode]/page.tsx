@@ -19,6 +19,7 @@ import { RevealCountdown } from './_components/RevealCountdown';
 import { RoundEndCountdown } from './_components/RoundEndCountdown';
 import { GameEndScreen } from './_components/GameEndScreen';
 import { playSound } from '@/lib/sounds';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export default function RoomPage() {
   const params = useParams();
@@ -46,6 +47,7 @@ export default function RoomPage() {
   });
 
   useDisconnectCleanup(room, playerId, roomCode);
+  useNotifications(room, playerId);
 
   const {
     copyRoomCode,

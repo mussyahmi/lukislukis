@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Canvas } from '@/components/game/Canvas';
 import { ProgressTimer } from '@/components/game/ProgressTimer';
-import { Paintbrush } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import type { Stroke } from '@/components/game/Canvas';
 
 interface DrawingScreenProps {
@@ -58,7 +58,7 @@ export function DrawingScreen({
                 <span>({letterCount} huruf)</span>
                 <span>·</span>
                 <div className="flex items-center gap-1">
-                  <Paintbrush className="w-3 h-3" />
+                  <Pencil className="w-3 h-3" />
                   <span>{isDrawer ? 'Anda melukis' : `${drawerName} melukis`}</span>
                 </div>
               </div>

@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Paintbrush, PaintBucket, Undo2, Trash2 } from 'lucide-react';
+import { Pencil, PaintBucket, Undo2, Trash2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
 export interface Stroke {
@@ -518,7 +518,7 @@ export function Canvas({ isDrawer, onStrokeComplete, onClear, onUndo, strokes }:
                 className="h-8 md:h-10"
                 aria-label="Pen tool"
               >
-                <Paintbrush className="w-3 h-3 md:w-4 md:h-4" />
+                <Pencil className="w-3 h-3 md:w-4 md:h-4" />
               </Button>
               <Button
                 variant={tool === 'fill' ? 'default' : 'outline'}
