@@ -212,10 +212,10 @@ export function GameLayout({
         </div>
       </div>
 
-      {/* Desktop Layout */}
-      <div className="hidden md:flex flex-1 p-3 gap-3 overflow-hidden">
-        {/* Left: Players */}
-        <div className="w-60 bg-card rounded-lg border flex flex-col overflow-hidden shadow-sm">
+      {/* Main content area — unified desktop/mobile layout */}
+      <div className="flex-1 flex gap-3 overflow-hidden md:p-3">
+        {/* Left: Players — desktop only */}
+        <div className="hidden md:flex flex-col w-60 bg-card rounded-lg border overflow-hidden shadow-sm">
           {/* Brand */}
           <div className="px-3 pt-2 pb-1 flex items-center justify-center gap-2">
             <div className="p-1 rounded-md bg-white shadow-sm flex-shrink-0">
@@ -262,13 +262,13 @@ export function GameLayout({
           </div>
         </div>
 
-        {/* Center: Main Content */}
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
+        {/* Center: Main Content — rendered ONCE, CSS-hidden on mobile when not canvas tab */}
+        <div className={`flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden ${mobileTab !== 'canvas' ? 'hidden md:flex' : ''}`}>
           {children}
         </div>
 
-        {/* Right: Chat */}
-        <div className="w-80 h-full">
+        {/* Right: Chat — desktop only */}
+        <div className="hidden md:flex flex-col w-80 h-full">
           <ChatBox
             messages={messages}
             isDrawer={isDrawer}
@@ -277,14 +277,10 @@ export function GameLayout({
             playerId={playerId}
           />
         </div>
-      </div>
 
-      {/* Mobile Layout */}
-      <div className="md:hidden flex-1 overflow-hidden">
-        {mobileTab === 'canvas' && <div className="h-full">{children}</div>}
-
+        {/* Mobile: chat tab */}
         {mobileTab === 'chat' && (
-          <div className="h-full">
+          <div className="md:hidden flex-1 h-full">
             <ChatBox
               messages={messages}
               isDrawer={isDrawer}
@@ -296,8 +292,9 @@ export function GameLayout({
           </div>
         )}
 
+        {/* Mobile: players tab */}
         {mobileTab === 'players' && (
-          <div className="h-full overflow-y-auto p-4 bg-card">
+          <div className="md:hidden flex-1 h-full overflow-y-auto p-4 bg-card">
             <PlayerList
               players={players}
               currentDrawerId={currentDrawerId}

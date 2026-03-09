@@ -142,6 +142,12 @@ export function useRoomPresence({
           }
         }
 
+        // Immediately mark as reconnected (don't wait for first interval tick)
+        await update(playerRef, { isDisconnected: false, lastActive: Date.now() });
+
+        // isActive declared before onValue so both closures share the same flag
+        let isActive = true;
+
         // Listen to room changes
         unsubscribe = onValue(roomRef, (snapshot) => {
           if (snapshot.exists()) {
@@ -149,7 +155,7 @@ export function useRoomPresence({
 
             // Only show disconnect message if user is NOT intentionally leaving
             if (!data.players || !data.players[uid]) {
-              // Cancel onDisconnect to prevent recreating the player node
+              isActive = false; // Stop interval from recreating the removed player node
               onDisconnect(playerRef).cancel();
               if (!isLeavingRoom.current) {
                 if (data.kickedPlayers?.[uid]) {
@@ -173,7 +179,6 @@ export function useRoomPresence({
         });
 
         // Update lastActive periodically
-        let isActive = true;
         activeInterval = setInterval(() => {
           if (uid && isActive) {
             get(ref(database, `rooms/${roomCode}/players/${uid}`)).then(snapshot => {

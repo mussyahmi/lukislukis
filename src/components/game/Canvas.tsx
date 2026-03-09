@@ -475,7 +475,7 @@ export function Canvas({ isDrawer, onStrokeComplete, onClear, onUndo, strokes }:
   };
 
   return (
-    <Card className="h-full flex flex-col shadow-xl border-2 p-0">
+    <Card className="h-full flex flex-col shadow-sm border p-0">
       <CardContent className="flex-1 flex flex-col p-2 md:p-4 gap-2 min-h-0">
         {/* Canvas Area - Fixed aspect ratio container with visible border */}
         <div
@@ -509,7 +509,7 @@ export function Canvas({ isDrawer, onStrokeComplete, onClear, onUndo, strokes }:
 
         {/* Action Buttons, Color Palette, Pen Slider — drawer only */}
         {isDrawer && (
-          <>
+          <div className="flex flex-col gap-2 md:gap-3">
             <div className="grid grid-cols-4 gap-1 md:gap-2">
               <Button
                 variant={tool === 'pen' ? 'default' : 'outline'}
@@ -578,7 +578,7 @@ export function Canvas({ isDrawer, onStrokeComplete, onClear, onUndo, strokes }:
                 />
               </div>
             )}
-          </>
+          </div>
         )}
       </CardContent>
     </Card>

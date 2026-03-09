@@ -55,12 +55,6 @@ export function useGameHandlers(
         return false;
       }
 
-      if (roomData.gameState !== 'WAITING') {
-        toast.error('Permainan sudah bermula. Tidak boleh menyertai.');
-        router.push('/');
-        return false;
-      }
-
       const newPlayer = {
         playerId,
         name: name.trim(),
