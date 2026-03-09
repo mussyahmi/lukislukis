@@ -15,11 +15,14 @@ import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { toast } from 'sonner';
 import { APP_VERSION } from '@/lib/version';
 import FeedbackButton from '@/components/common/FeedbackButton';
+import SupportButton from '@/components/common/SupportButton';
 import { Spinner } from '@/components/ui/spinner';
+import { useLiveStats } from '@/hooks/useLiveStats';
 
 
 export default function HomePage() {
   const router = useRouter();
+  const liveStats = useLiveStats();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [loadingJoinRandomRoom, setLoadingJoinRandomRoom] = useState(false);
@@ -322,6 +325,12 @@ export default function HomePage() {
               <p className="text-sm text-muted-foreground">Lukis, teka, dan menang</p>
             </div>
           </div>
+          {liveStats !== null && (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span>{liveStats.activePlayers} pemain dalam talian · {liveStats.activeRooms} bilik aktif</span>
+            </div>
+          )}
         </div>
 
         {/* Main Card */}
@@ -546,16 +555,13 @@ export default function HomePage() {
         <div className="text-center text-xs text-muted-foreground flex flex-col gap-1.5 pb-4">
           <p>Dibina untuk pembelajaran Bahasa Melayu</p>
           <p className="flex items-center justify-center gap-2">
+            <a href="/perkataan" className="text-primary hover:underline font-medium">
+              Cadangkan Perkataan
+            </a>
+            <span>·</span>
             <FeedbackButton />
             <span>·</span>
-            <a
-              href="https://buymeacoffee.com/mustafasyahmi"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline font-medium"
-            >
-              Belanja Kopi
-            </a>
+            <SupportButton />
           </p>
           <span>v{APP_VERSION}</span>
         </div>
