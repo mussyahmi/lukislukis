@@ -18,6 +18,7 @@ import { DrawingScreen } from './_components/DrawingScreen';
 import { RevealCountdown } from './_components/RevealCountdown';
 import { RoundEndCountdown } from './_components/RoundEndCountdown';
 import { GameEndScreen } from './_components/GameEndScreen';
+import { playSound } from '@/lib/sounds';
 
 export default function RoomPage() {
   const params = useParams();
@@ -295,6 +296,13 @@ export default function RoomPage() {
   useEffect(() => {
     if (room?.gameState !== 'DRAWING') {
       isProcessingTurnComplete.current = false;
+    }
+  }, [room?.gameState]);
+
+  // Game end sound
+  useEffect(() => {
+    if (room?.gameState === 'GAME_ENDED') {
+      playSound('gameEnd');
     }
   }, [room?.gameState]);
 

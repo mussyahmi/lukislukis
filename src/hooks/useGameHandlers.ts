@@ -6,6 +6,7 @@ import { Room, Player } from '@/types/game';
 import { GameLogic } from '@/lib/gameLogic';
 import type { Stroke } from '@/components/game/Canvas';
 import { toast } from 'sonner';
+import { playSound } from '@/lib/sounds';
 
 export function useGameHandlers(
   room: Room | null,
@@ -298,6 +299,7 @@ export function useGameHandlers(
     });
 
     await update(ref(database), updates);
+    playSound('drawingStart');
   }, [room, playerId, roomCode]);
 
   const handleStrokeComplete = useCallback(async (stroke: Stroke) => {
@@ -365,6 +367,7 @@ export function useGameHandlers(
           timestamp: Date.now(),
         });
 
+        playSound('correctGuess');
         toast.success(`Betul! +${points} mata`);
 
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -379,6 +382,7 @@ export function useGameHandlers(
           const allGuessed = correctGuessers.length === guessers.length && guessers.length > 0;
 
           if (allGuessed) {
+            playSound('allGuessed');
             const systemMessageRef = push(ref(database, `rooms/${roomCode}/messages`));
             await set(systemMessageRef, {
               id: systemMessageRef.key,
@@ -457,6 +461,7 @@ export function useGameHandlers(
         });
       }
 
+      playSound('timeout');
       const systemMessageRef = push(ref(database, `rooms/${roomCode}/messages`));
       await set(systemMessageRef, {
         id: systemMessageRef.key,

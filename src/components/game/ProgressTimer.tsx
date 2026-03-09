@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Timer } from 'lucide-react';
+import { playSound } from '@/lib/sounds';
 
 interface ProgressTimerProps {
   startTime: number;
@@ -36,6 +37,11 @@ export function ProgressTimer({ startTime, duration, onComplete }: ProgressTimer
 
     return () => clearInterval(interval);
   }, [startTime, duration]); // only reset when a new turn starts
+
+  useEffect(() => {
+    if (timeRemaining <= 0 || timeRemaining > 10) return;
+    playSound(timeRemaining <= 5 ? 'tickCritical' : 'tick');
+  }, [timeRemaining]);
 
   const progress = (timeRemaining / duration) * 100;
   const isUrgent = timeRemaining <= 10;

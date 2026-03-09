@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Copy, Users, LogOut, Settings } from 'lucide-react';
+import { Copy, Users, LogOut, Settings, Volume2, VolumeX } from 'lucide-react';
 import { Player } from '@/types/game';
 import { ChatBox } from '@/components/game/ChatBox';
 import { PlayerList } from '@/components/game/PlayerList';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { toggleMute, isMuted } from '@/lib/sounds';
 import Image from 'next/image';
 
 interface Message {
@@ -66,6 +67,7 @@ export function GameLayout({
 }: GameLayoutProps) {
   const [mobileTab, setMobileTab] = useState<'canvas' | 'chat' | 'players'>('canvas');
   const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(0);
+  const [soundMuted, setSoundMuted] = useState(() => isMuted());
   const [passwordInput, setPasswordInput] = useState(roomPassword || '');
   const [passwordEnabled, setPasswordEnabled] = useState(hasPassword);
   const [capacityInput, setCapacityInput] = useState(maxPlayers);
@@ -193,6 +195,14 @@ export function GameLayout({
               <Copy className="w-3 h-3 text-muted-foreground" />
             </button>
             <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground"
+              onClick={() => setSoundMuted(toggleMute())}
+            >
+              {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </Button>
             {isAdmin && (
               <Popover>
                 <PopoverTrigger asChild>
@@ -229,6 +239,14 @@ export function GameLayout({
               <Copy className="w-3.5 h-3.5 text-muted-foreground" />
             </Button>
             <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground"
+              onClick={() => setSoundMuted(toggleMute())}
+            >
+              {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </Button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3">

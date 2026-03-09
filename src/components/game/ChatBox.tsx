@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Send, UserMinus, UserPlus, SkipForward, AlertTriangle, Timer, PartyPopper, Gamepad2, Ban, ShieldCheck, UserX } from 'lucide-react';
+import { playSound } from '@/lib/sounds';
 
 export interface Message {
   id: string;
@@ -31,10 +32,21 @@ export function ChatBox({ messages, isDrawer, hasGuessed, onSendMessage, playerI
   const [lastMessageTime, setLastMessageTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef(messages.length);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    const prev = lastMessageCountRef.current;
+    lastMessageCountRef.current = messages.length;
+    if (messages.length <= prev) return;
+    const newest = messages[messages.length - 1];
+    if (newest && newest.playerId !== playerId && newest.playerId !== 'system') {
+      playSound('chatPing');
+    }
+  }, [messages, playerId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,9 +175,9 @@ export function ChatBox({ messages, isDrawer, hasGuessed, onSendMessage, playerI
   }
 
   return (
-    <Card className="h-full flex flex-col shadow-sm border gap-0">
+    <Card className="h-full flex flex-col shadow-sm border gap-0 p-0">
       <CardHeader className="pb-2 px-4 pt-3">
-        <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Chat</CardTitle>
+        <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">Chat</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col min-h-0 px-3 pt-0 pb-3">
         <div
