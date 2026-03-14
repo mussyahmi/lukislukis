@@ -34,7 +34,6 @@ interface GameLayoutProps {
   isDrawer: boolean;
   hasGuessed: boolean;
   hasPassword: boolean;
-  roomPassword: string | null;
   maxPlayers: number;
   onSendMessage: (text: string) => void;
   onLeaveRoom: () => void;
@@ -55,7 +54,6 @@ export function GameLayout({
   isDrawer,
   hasGuessed,
   hasPassword,
-  roomPassword,
   maxPlayers,
   onSendMessage,
   onLeaveRoom,
@@ -72,7 +70,7 @@ export function GameLayout({
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'denied'
   );
-  const [passwordInput, setPasswordInput] = useState(roomPassword || '');
+  const [passwordInput, setPasswordInput] = useState('');
   const [passwordEnabled, setPasswordEnabled] = useState(hasPassword);
   const [capacityInput, setCapacityInput] = useState(maxPlayers);
 
@@ -126,7 +124,12 @@ export function GameLayout({
   };
 
   const handleSaveSettings = () => {
-    onUpdatePassword(passwordEnabled ? (passwordInput.trim() || null) : null);
+    if (!passwordEnabled) {
+      onUpdatePassword(null);
+    } else if (passwordInput.trim()) {
+      onUpdatePassword(passwordInput.trim());
+    }
+    // If passwordEnabled but input is empty, keep existing password (no change)
     onUpdateCapacity(capacityInput);
   };
 

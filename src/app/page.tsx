@@ -14,6 +14,7 @@ import { Slider } from '@/components/ui/slider';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { toast } from 'sonner';
 import { APP_VERSION } from '@/lib/version';
+import { hashPassword } from '@/lib/hash';
 import FeedbackButton from '@/components/common/FeedbackButton';
 import SupportButton from '@/components/common/SupportButton';
 import { Spinner } from '@/components/ui/spinner';
@@ -62,13 +63,14 @@ export default function HomePage() {
       const roomRef = ref(database, `rooms/${newRoomCode}`);
 
       const hasRoomPassword = createPasswordEnabled && !!createPassword.trim();
+      const hashedPassword = hasRoomPassword ? await hashPassword(createPassword.trim()) : undefined;
       const initialRoom: Room = {
         roomCode: newRoomCode,
         createdAt: Date.now(),
         lastActivity: Date.now(),
         adminId: playerId,
         hasPassword: hasRoomPassword,
-        ...(hasRoomPassword ? { password: createPassword.trim() } : {}),
+        ...(hasRoomPassword ? { password: hashedPassword } : {}),
         maxPlayers: createMaxPlayers,
         gameState: 'WAITING',
         currentDrawerId: null,
@@ -156,13 +158,15 @@ export default function HomePage() {
         return;
       }
 
-      // Validate password
-      if (room.hasPassword && room.password && roomPasswordInput.trim() !== room.password) {
-        toast.error('Kata laluan salah');
-        setLoadingJoinRoom(false);
-        return;
+      // Validate password (stored as SHA-256 hash)
+      if (room.hasPassword && room.password) {
+        const inputHash = await hashPassword(roomPasswordInput.trim());
+        if (inputHash !== room.password) {
+          toast.error('Kata laluan salah');
+          setLoadingJoinRoom(false);
+          return;
+        }
       }
-
       const playerCount = Object.keys(room.players || {}).length;
       if (playerCount >= room.maxPlayers) {
         toast.error('Bilik penuh');

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ref, update, push, set } from 'firebase/database';
+import { ref, update, push, set, remove } from 'firebase/database';
 import { database } from '@/lib/firebase';
 import { Room, Player } from '@/types/game';
 
@@ -36,7 +36,12 @@ export function useDisconnectCleanup(
           .filter(pid => !disconnectedPlayers.includes(pid))
           .sort();
 
-        const shouldHandle = activePlayerIds.length > 0 && activePlayerIds[0] === playerId;
+        // Prefer admin as cleanup handler to avoid race condition between clients.
+        // Fall back to first active player only when admin is not present.
+        const adminIsActive = activePlayerIds.includes(room.adminId);
+        const shouldHandle = adminIsActive
+          ? playerId === room.adminId
+          : activePlayerIds.length > 0 && activePlayerIds[0] === playerId;
 
         if (shouldHandle) {
           const updates: any = {};
@@ -55,6 +60,13 @@ export function useDisconnectCleanup(
           const activePlayers = Object.keys(room.players).filter(
             pid => !disconnectedPlayers.includes(pid)
           );
+
+          // If no players remain, delete the room entirely
+          if (activePlayers.length === 0) {
+            await remove(ref(database, `rooms/${roomCode}`));
+            return;
+          }
+
           updates[`rooms/${roomCode}/drawOrder`] = activePlayers;
 
           const drawerDisconnected = room.currentDrawerId && disconnectedPlayers.includes(room.currentDrawerId);

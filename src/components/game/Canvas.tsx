@@ -245,8 +245,11 @@ export function Canvas({ isDrawer, onStrokeComplete, onClear, onUndo, strokes }:
     const height = canvas.height;
     const pixelStack: [number, number][] = [[startX, startY]];
     const visited = new Uint8Array(width * height); // Use typed array for faster access
+    let processedPixels = 0;
+    const MAX_PIXELS = width * height; // Hard cap — can never fill more than the canvas
 
     while (pixelStack.length > 0) {
+      if (processedPixels > MAX_PIXELS) break; // Safety guard
       const [x, y] = pixelStack.pop()!;
 
       // Skip if out of bounds or already visited
@@ -277,6 +280,7 @@ export function Canvas({ isDrawer, onStrokeComplete, onClear, onUndo, strokes }:
       }
 
       // Fill the scanline and mark as visited
+      processedPixels += right - left + 1;
       for (let i = left; i <= right; i++) {
         const idx = y * width + i;
         visited[idx] = 1;

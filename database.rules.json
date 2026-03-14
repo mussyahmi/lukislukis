@@ -4,53 +4,7 @@
       ".read": "auth != null",
       "$roomCode": {
         ".read": true,
-        ".write": "auth != null",
-        "players": {
-          "$playerId": {
-            ".write": "auth != null"
-          }
-        },
-        "messages": {
-          ".write": "auth != null"
-        },
-        "canvas": {
-          "strokes": {
-            ".write": "auth != null"
-          },
-          "cleared": {
-            ".write": "auth != null"
-          }
-        },
-        "gameState": {
-          ".write": "auth != null"
-        },
-        "turnStartTime": {
-          ".write": "auth != null"
-        },
-        "currentDrawerId": {
-          ".write": "auth != null"
-        },
-        "currentDrawerIndex": {
-          ".write": "auth != null"
-        },
-        "currentWord": {
-          ".write": "auth != null"
-        },
-        "currentWordDifficulty": {
-          ".write": "auth != null"
-        },
-        "revealedLetters": {
-          ".write": "auth != null"
-        },
-        "usedWords": {
-          ".write": "auth != null"
-        },
-        "currentRound": {
-          ".write": "auth != null"
-        },
-        "drawOrder": {
-          ".write": "auth != null"
-        }
+        ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || data.child('adminId').val() === auth.uid)"
       }
     },
     "suggestions": {

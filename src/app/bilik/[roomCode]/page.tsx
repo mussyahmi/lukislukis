@@ -369,7 +369,7 @@ export default function RoomPage() {
         onCopyCode={copyRoomCode}
         onVoteToKick={handleVoteToKick}
         hasPassword={room.hasPassword}
-        roomPassword={room.password ?? null}
+
         maxPlayers={room.maxPlayers}
         onUpdatePassword={handleUpdatePassword}
         onUpdateCapacity={handleUpdateCapacity}
@@ -407,7 +407,7 @@ export default function RoomPage() {
         onCopyCode={copyRoomCode}
         onVoteToKick={handleVoteToKick}
         hasPassword={room.hasPassword}
-        roomPassword={room.password ?? null}
+
         maxPlayers={room.maxPlayers}
         onUpdatePassword={handleUpdatePassword}
         onUpdateCapacity={handleUpdateCapacity}
@@ -447,7 +447,7 @@ export default function RoomPage() {
         onCopyCode={copyRoomCode}
         onVoteToKick={handleVoteToKick}
         hasPassword={room.hasPassword}
-        roomPassword={room.password ?? null}
+
         maxPlayers={room.maxPlayers}
         onUpdatePassword={handleUpdatePassword}
         onUpdateCapacity={handleUpdateCapacity}
@@ -496,7 +496,7 @@ export default function RoomPage() {
         onCopyCode={copyRoomCode}
         onVoteToKick={handleVoteToKick}
         hasPassword={room.hasPassword}
-        roomPassword={room.password ?? null}
+
         maxPlayers={room.maxPlayers}
         onUpdatePassword={handleUpdatePassword}
         onUpdateCapacity={handleUpdateCapacity}
@@ -537,7 +537,7 @@ export default function RoomPage() {
         onCopyCode={copyRoomCode}
         onVoteToKick={handleVoteToKick}
         hasPassword={room.hasPassword}
-        roomPassword={room.password ?? null}
+
         maxPlayers={room.maxPlayers}
         onUpdatePassword={handleUpdatePassword}
         onUpdateCapacity={handleUpdateCapacity}
@@ -573,7 +573,7 @@ export default function RoomPage() {
         onCopyCode={copyRoomCode}
         onVoteToKick={handleVoteToKick}
         hasPassword={room.hasPassword}
-        roomPassword={room.password ?? null}
+
         maxPlayers={room.maxPlayers}
         onUpdatePassword={handleUpdatePassword}
         onUpdateCapacity={handleUpdateCapacity}

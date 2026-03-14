@@ -39,8 +39,11 @@ export class GameLogic {
   }
 
   static getWordOptions(usedWords: string[]): string[] {
-    const available = (wordsData as string[]).filter(w => !usedWords.includes(w));
-    return this.shuffleArray(available).slice(0, 3);
+    const all = wordsData as string[];
+    const available = all.filter(w => !usedWords.includes(w));
+    // If all words have been used, reset and draw from the full list
+    const pool = available.length >= 3 ? available : all;
+    return this.shuffleArray(pool).slice(0, 3);
   }
 
   static checkGuess(guess: string, correctWord: string): { isCorrect: boolean; isNearMatch: boolean } {
@@ -52,8 +55,10 @@ export class GameLogic {
     }
 
     // Levenshtein distance for near matches
+    // Also require same first character to avoid false positives on short words
+    const sameStart = normalizedGuess[0] === normalizedWord[0];
     const similarity = this.calculateSimilarity(normalizedGuess, normalizedWord);
-    return { isCorrect: false, isNearMatch: similarity >= 0.7 };
+    return { isCorrect: false, isNearMatch: sameStart && similarity >= 0.7 };
   }
 
   private static calculateSimilarity(str1: string, str2: string): number {
@@ -108,7 +113,7 @@ export class GameLogic {
 
   static calculateDrawerScore(correctGuessCount: number): number {
     if (correctGuessCount === 0) return 0;
-    return correctGuessCount * 20;
+    return correctGuessCount * 50;
   }
 
   static shuffleArray<T>(array: T[]): T[] {

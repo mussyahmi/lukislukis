@@ -7,6 +7,7 @@ import { GameLogic } from '@/lib/gameLogic';
 import type { Stroke } from '@/components/game/Canvas';
 import { toast } from 'sonner';
 import { playSound } from '@/lib/sounds';
+import { hashPassword } from '@/lib/hash';
 
 export function useGameHandlers(
   room: Room | null,
@@ -115,6 +116,7 @@ export function useGameHandlers(
       const leavingPlayer = currentRoom.players[playerId];
       const remainingPlayers = Object.keys(currentRoom.players || {}).filter(id => id !== playerId);
 
+      // Send leave message while still a room member
       if (leavingPlayer) {
         const leaveMessageRef = push(ref(database, `rooms/${roomCode}/messages`));
         await set(leaveMessageRef, {
@@ -138,17 +140,26 @@ export function useGameHandlers(
 
       const playerRef = ref(database, `rooms/${roomCode}/players/${playerId}`);
       await onDisconnect(playerRef).cancel();
-      await remove(playerRef);
 
       const newDrawOrder = currentRoom.drawOrder.filter((id: string) => id !== playerId);
+      const updates: any = { drawOrder: newDrawOrder };
 
-      const updates: any = {
-        drawOrder: newDrawOrder,
-      };
-
+      // Admin handoff — notify new admin while still a member
       if (currentRoom.adminId === playerId) {
         const newAdminId = remainingPlayers[0];
         updates.adminId = newAdminId;
+        const newAdminName = currentRoom.players[newAdminId]?.name;
+        const adminMsgRef = push(ref(database, `rooms/${roomCode}/messages`));
+        await set(adminMsgRef, {
+          id: adminMsgRef.key,
+          playerId: 'system',
+          playerName: 'Sistem',
+          text: `${newAdminName} dilantik sebagai admin baru`,
+          isCorrect: false,
+          isNearMatch: false,
+          timestamp: Date.now(),
+          icon: 'shield-check',
+        });
       }
 
       if (remainingPlayers.length < 3 && currentRoom.gameState !== 'WAITING') {
@@ -166,7 +177,14 @@ export function useGameHandlers(
           icon: 'alert-triangle',
         });
 
-        await update(ref(database, `rooms/${roomCode}`), updates);
+        // Atomic: remove player + room updates in one operation so Firebase
+        // membership check (data.child('players').child(auth.uid).exists())
+        // is evaluated against pre-write state where player still exists.
+        const atomicUpdates: Record<string, any> = { [`rooms/${roomCode}/players/${playerId}`]: null };
+        for (const [key, val] of Object.entries(updates)) {
+          atomicUpdates[`rooms/${roomCode}/${key}`] = val;
+        }
+        await update(ref(database), atomicUpdates);
         toast.info('Anda telah keluar dari bilik');
         router.push('/');
         return;
@@ -244,7 +262,12 @@ export function useGameHandlers(
         }
       }
 
-      await update(ref(database, `rooms/${roomCode}`), updates);
+      // Atomic: remove player + all room updates (pre-write data still has player → rule passes)
+      const atomicUpdates: Record<string, any> = { [`rooms/${roomCode}/players/${playerId}`]: null };
+      for (const [key, val] of Object.entries(updates)) {
+        atomicUpdates[`rooms/${roomCode}/${key}`] = val;
+      }
+      await update(ref(database), atomicUpdates);
 
       toast.info('Anda telah keluar dari bilik');
       router.push('/');
@@ -670,9 +693,10 @@ export function useGameHandlers(
 
   const handleUpdatePassword = useCallback(async (password: string | null) => {
     try {
+      const hashed = password ? await hashPassword(password) : null;
       await update(ref(database, `rooms/${roomCode}`), {
-        hasPassword: !!password,
-        password: password || null,
+        hasPassword: !!hashed,
+        password: hashed,
       });
       toast.success(password ? 'Kata laluan ditetapkan' : 'Kata laluan dibuang');
     } catch (error) {
